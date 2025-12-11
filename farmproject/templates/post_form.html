@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            {% if post %} Edit Post {% else %} Create New Post {% endif %}
+          </h4>
+        </div>
+
+        <div class="card-body">
+          <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Title -->
+            <div class="form-group">
+              <label for="id_title">Title</label>
+              {{ form.title }}
+            </div>
+
+            <!-- Content -->
+            <div class="form-group">
+              <label for="id_contents">Description</label>
+              {{ form.contents }}
+            </div>
+
+            <!-- Category -->
+            <div class="form-group">
+              <label for="id_category">Category</label>
+              {{ form.category }}
+            </div>
+
+            <!-- Phone -->
+            <div class="form-group">
+              <label for="id_phone_number">Contact Phone</label>
+              {{ form.phone_number }}
+            </div>
+
+            <!-- Postcode -->
+            <div class="form-group">
+              <label for="id_postcode">Postcode</label>
+              {{ form.postcode }}
+            </div>
+
+            <!-- District -->
+            <div class="form-group">
+              <label for="id_district">District</label>
+              {{ form.district }}
+            </div>
+
+            <!-- Images -->
+            <div class="form-group">
+              <label>Upload Images (max 10)</label>
+              {{ form.images }}
+              <small class="form-text text-muted">You may select multiple files.</small>
+            </div>
+
+            <div class="text-right mt-4">
+              <button type="submit" class="btn btn-success btn-lg">
+                {% if post %} Update Post {% else %} Submit Post {% endif %}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

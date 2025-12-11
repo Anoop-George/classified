@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Admin Verification</h2>
+
+<h4>New Posts (Pending Verification)</h4>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Category</th>
+      <th>District</th>
+      <th>Postcode</th>
+      <th>Phone</th>
+      <th>Created</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for post in new_posts %}
+    <tr>
+      <td>{{ post.title }}</td>
+      <td>{{ post.get_category_display }}</td>
+      <td>{{ post.district }}</td>
+      <td>{{ post.postcode }}</td>
+      <td>{{ post.phone_number }}</td>
+      <td>{{ post.created_at|date:"d M Y H:i" }}</td>
+      <td>
+        <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-info mb-1" target="_blank">View</a>
+        <form method="post" style="display:inline;">
+          {% csrf_token %}
+          <input type="hidden" name="post_id" value="{{ post.pk }}">
+          <button name="action" value="approve" class="btn btn-sm btn-success mb-1">Approve</button>
+          <button name="action" value="reject" class="btn btn-sm btn-danger mb-1">Reject</button>
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7">No new posts waiting for verification.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h4 class="mt-5">Flagged Posts (Spam/Fake)</h4>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Category</th>
+      <th>District</th>
+      <th>Postcode</th>
+      <th>Phone</th>
+      <th>Views</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for post in flagged_posts %}
+    <tr>
+      <td>{{ post.title }}</td>
+      <td>{{ post.get_category_display }}</td>
+      <td>{{ post.district }}</td>
+      <td>{{ post.postcode }}</td>
+      <td>{{ post.phone_number }}</td>
+      <td>{{ post.view_count }}</td>
+      <td>
+        <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-info mb-1" target="_blank">View</a>
+        <form method="post" style="display:inline;">
+          {% csrf_token %}
+          <input type="hidden" name="post_id" value="{{ post.pk }}">
+          <button name="action" value="approve" class="btn btn-sm btn-success mb-1">Approve</button>
+          <button name="action" value="reject" class="btn btn-sm btn-danger mb-1">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="7">No flagged posts.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
