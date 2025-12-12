@@ -88,6 +88,9 @@ def get_image_upload_path(instance, filename):
 def get_webp_upload_path(instance, filename):
     return os.path.join('ad_images', 'webp', filename)
 
+# ------------------------------
+#  AD IMAGE (with hard limit: max 6 images per post)
+# ------------------------------
 
 class AdImage(models.Model):
     post = models.ForeignKey(
@@ -97,7 +100,6 @@ class AdImage(models.Model):
     )
 
     image = models.ImageField(upload_to=get_image_upload_path)
-
     webp_image = models.ImageField(
         upload_to=get_webp_upload_path,
         blank=True,
@@ -108,7 +110,12 @@ class AdImage(models.Model):
         return f"Image for post {self.post_id}"
 
     def save(self, *args, **kwargs):
+        # Enforce MAX 6 images per post at model-level
+        if self.post.images.count() >= 6:
+            raise ValueError("A post cannot have more than 6 images.")
+
         raw = kwargs.pop('raw', False)
+
         if self.image and not raw:
             img = Image.open(self.image)
             img = img.convert('RGB')
