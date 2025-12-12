@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 
 from .models import AdPost, AdImage
 from .widgets import MultiFileInput   # Ensure widgets.py exists inside same folder
+from .fields import MultiFileField
 
 User = get_user_model()
 
@@ -53,8 +54,7 @@ class PhoneLoginForm(AuthenticationForm):
 #  AD POST FORM
 # ------------------------------
 class AdPostForm(forms.ModelForm):
-    # Multi-image upload field
-    images = forms.FileField(
+    images = MultiFileField(
         widget=MultiFileInput(attrs={'multiple': True}),
         required=False
     )
@@ -66,12 +66,14 @@ class AdPostForm(forms.ModelForm):
             'phone_number', 'postcode', 'district'
         ]
 
-    # Always return a list (never None)
     def clean_images(self):
-        files = self.files.getlist('images')
-        return files or []
+        files = self.files.getlist('images') if hasattr(self.files, "getlist") else []
+            
+        if len(files) > 10:
+            raise forms.ValidationError("You can upload up to 10 images.")
 
-    # Save post + images
+        return files
+
     def save(self, commit=True, user=None):
         post = super().save(commit=False)
 
@@ -82,6 +84,7 @@ class AdPostForm(forms.ModelForm):
             post.save()
 
             images = self.cleaned_data.get('images') or []
+
             for img in images:
                 AdImage.objects.create(post=post, image=img)
 

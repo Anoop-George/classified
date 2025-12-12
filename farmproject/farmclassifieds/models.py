@@ -24,6 +24,7 @@ class User(AbstractUser):
 
     @property
     def number_of_adposts(self):
+        # Correct reverse relation
         return self.posts.count()
 
 
@@ -55,11 +56,16 @@ class AdPost(models.Model):
     modified_at = models.DateTimeField(auto_now=True)
 
     phone_number = models.CharField(max_length=20)
+
+    # FIX : added related_name="posts" + null=True, blank=True 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='posts'
+        related_name="posts",
+        null=True,
+        blank=True
     )
+
     postcode = models.CharField(max_length=20)
     district = models.CharField(max_length=100)
 
@@ -69,10 +75,7 @@ class AdPost(models.Model):
 
     def __str__(self):
         return self.title
-
-    @property
-    def created_username(self):
-        return self.created_by.username
+    # ❌ DO NOT add number_of_adposts here — removed
 
 
 # ------------------------------
@@ -92,9 +95,9 @@ class AdImage(models.Model):
         on_delete=models.CASCADE,
         related_name='images'
     )
-    # Compressed JPEG/PNG
+
     image = models.ImageField(upload_to=get_image_upload_path)
-    # Generated WebP variant
+
     webp_image = models.ImageField(
         upload_to=get_webp_upload_path,
         blank=True,
@@ -105,14 +108,8 @@ class AdImage(models.Model):
         return f"Image for post {self.post_id}"
 
     def save(self, *args, **kwargs):
-        """
-        On save:
-        - Compress original image to JPEG.
-        - Create a WebP version for smaller size.
-        """
         raw = kwargs.pop('raw', False)
         if self.image and not raw:
-            # Open original
             img = Image.open(self.image)
             img = img.convert('RGB')
 
@@ -133,7 +130,6 @@ class AdImage(models.Model):
                 webp_name = base_name + ".webp"
                 self.webp_image.save(webp_name, ContentFile(webp_io.getvalue()), save=False)
             except OSError:
-                # Pillow not compiled with WebP support → ignore, keep only JPEG
                 pass
 
         super().save(*args, **kwargs)
