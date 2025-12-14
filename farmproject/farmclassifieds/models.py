@@ -7,6 +7,8 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from PIL import Image
 import os
+from django.utils import timezone
+from datetime import timedelta
 
 
 # ------------------------------
@@ -17,7 +19,7 @@ class User(AbstractUser):
     google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     facebook_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     email = models.EmailField(blank=True, null=True)
-    ad_post_limit = models.PositiveIntegerField(default=10)
+    ad_post_limit = models.PositiveIntegerField(default=3)
 
     def __str__(self):
         return self.username or self.phone_number
@@ -72,6 +74,20 @@ class AdPost(models.Model):
     view_count = models.PositiveIntegerField(default=0)
     admin_verified = models.BooleanField(default=False)
     public_flagged = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    renew_count = models.PositiveIntegerField(default=0)
+    is_expired = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+        # First time creation → 2 months expiry
+            self.expires_at = timezone.now() + timedelta(days=60)
+
+    # Auto-expire
+        if timezone.now() > self.expires_at:
+         self.is_expired = True
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title

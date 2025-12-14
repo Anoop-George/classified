@@ -5,12 +5,14 @@
 <div class="container mt-4">
 
   {% if not post.admin_verified %}
-    <div class="alert alert-warning">
-      <strong>Admin Preview:</strong> This post is not yet verified. Only admin/staff can see it.
-    </div>
+  <div class="alert alert-warning">
+    <strong>Admin Preview:</strong>
+    This post is not yet verified. Only admin/staff can see it.
+  </div>
   {% endif %}
 
   <h2>{{ post.title }}</h2>
+
   <p class="text-muted mb-1">
     Category: <strong>{{ post.get_category_display }}</strong> •
     District: <strong>{{ post.district }}</strong> •
@@ -21,86 +23,98 @@
     <p class="text-muted">Views: {{ post.view_count }}</p>
   {% endif %}
 
-  <!-- IMAGE CAROUSEL -->
-  {% if post.images.all %}
-    <div id="postCarousel" class="carousel slide mb-4" data-ride="carousel">
-      <div class="carousel-inner">
+  <!-- ================= IMAGE CAROUSEL ================= -->
+  {% if post.images.count %}
+  <div id="postCarousel" class="carousel slide mb-4" data-ride="carousel">
+    <div class="carousel-inner">
 
-        {% for img in post.images.all %}
-          <div class="carousel-item {% if forloop.first %}active{% endif %}">
-            <picture>
-              {% if img.webp_image %}
-                <source srcset="{{ img.webp_image.url }}" type="image/webp">
-              {% endif %}
-              <img src="{{ img.image.url }}" class="d-block w-100"
-                   style="max-height:400px; object-fit:cover;">
-            </picture>
-          </div>
-        {% endfor %}
-
+      {% for img in post.images.all %}
+      <div class="carousel-item {% if forloop.first %}active{% endif %}">
+        <picture>
+          {% if img.webp_image %}
+            <source srcset="{{ img.webp_image.url }}" type="image/webp">
+          {% endif %}
+          <img src="{{ img.image.url }}"
+               class="d-block w-100"
+               style="max-height:400px; object-fit:cover;">
+        </picture>
       </div>
+      {% endfor %}
 
-      {% if post.images.count > 1 %}
-        <a class="carousel-control-prev" href="#postCarousel" role="button" data-slide="prev">
-          <span class="carousel-control-prev-icon"></span>
-        </a>
-        <a class="carousel-control-next" href="#postCarousel" role="button" data-slide="next">
-          <span class="carousel-control-next-icon"></span>
-        </a>
-      {% endif %}
     </div>
+
+    {% if post.images.count > 1 %}
+    <a class="carousel-control-prev" href="#postCarousel" role="button" data-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </a>
+    <a class="carousel-control-next" href="#postCarousel" role="button" data-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </a>
+    {% endif %}
+  </div>
   {% endif %}
 
-  <!-- CONTENT -->
+  <!-- ================= CONTENT ================= -->
   <div class="card mb-4">
     <div class="card-body">
+
       <p style="white-space: pre-line;">{{ post.contents }}</p>
 
       <h5 class="mt-3">Contact</h5>
       <p>
         Phone: <strong>{{ post.phone_number }}</strong><br>
-        Posted by: <strong>{{ post.created_username }}</strong>
+        Posted by:
+        <strong>
+          {{ post.created_by.phone_number|default:"Anonymous" }}
+        </strong>
       </p>
 
-      <!-- SHARE BUTTONS -->
+      <!-- ================= SHARE BUTTONS ================= -->
       <div class="mt-3">
         <h5>Share this post:</h5>
 
-        <a href="{{ share_facebook }}" target="_blank"
+        <a href="{{ share_facebook }}"
+           target="_blank"
            class="btn btn-primary btn-sm mr-2">
           Facebook
         </a>
 
-        <a href="{{ share_whatsapp }}" target="_blank"
+        <a href="{{ share_whatsapp }}"
+           target="_blank"
            class="btn btn-success btn-sm mr-2">
           WhatsApp
         </a>
 
-        <a href="{{ share_instagram }}" target="_blank"
+        <a href="{{ share_instagram }}"
+           target="_blank"
            class="btn btn-danger btn-sm">
           Instagram
         </a>
       </div>
 
-      <!-- REPORT SPAM -->
-      {% if post.admin_verified and not post.public_flagged %}
-        <form method="post" class="mt-3">
-          {% csrf_token %}
-          <button type="submit" name="report_spam"
-                  class="btn btn-warning btn-sm"
-                  onclick="return confirm('Report as spam/fake?');">
-            Report as Spam
-          </button>
-        </form>
-      {% elif post.public_flagged %}
-        <p class="text-danger mt-2"><strong>This post has been flagged by users.</strong></p>
+      <!-- ================= REPORT SPAM ================= -->
+      {% if post.admin_verified %}
+      <form method="post" class="mt-3">
+        {% csrf_token %}
+        <button name="report_spam"
+                class="btn btn-sm btn-outline-danger">
+          Report Spam / Fake
+        </button>
+      </form>
       {% endif %}
+
+      <!-- IMPORTANT:
+           ❌ NO spam status shown to public
+           ❌ NO button disabling
+           ✔ Always same UI
+      -->
 
     </div>
   </div>
 
-  <!-- BACK BUTTON -->
-  <a href="{% url 'post_list' %}" class="btn btn-secondary">Back to Posts</a>
+  <a href="{% url 'post_list' %}" class="btn btn-secondary">
+    Back to Posts
+  </a>
 
 </div>
 

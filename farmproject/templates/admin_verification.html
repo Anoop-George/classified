@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <h2 class="mb-4">Admin Moderation Panel</h2>
+
+  {% if messages %}
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+  {% endif %}
+
+  <!-- ========================= -->
+  <!-- NEW / UNVERIFIED POSTS -->
+  <!-- ========================= -->
+  <h4 class="mt-4">New Posts (Pending Approval)</h4>
+
+  {% if posts %}
+  <table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+      <tr>
+        <th>Post</th>
+        <th>User</th>
+        <th>Images</th>
+        <th>Created</th>
+        <th>Post Actions</th>
+        <th>User Management</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for post in posts %}
+      <tr>
+        <td>
+          <strong>{{ post.title }}</strong><br>
+          <small>{{ post.category }}</small><br>
+          <small>{{ post.postcode }} | {{ post.district }}</small>
+        </td>
+
+        <td>
+          {{ post.created_by.phone_number }}<br>
+          <small>
+            Ads: {{ post.created_by.posts.count }} /
+            {{ post.created_by.ad_post_limit }}
+          </small>
+        </td>
+
+        <td>{{ post.images.count }}</td>
+
+        <td>{{ post.created_at|date:"d M Y" }}</td>
+
+        <td>
+          <a href="{% url 'post_detail' post.pk %}" target="_blank" class="btn btn-sm btn-info mb-1">View</a>
+
+          <form method="post" action="{% url 'admin_approve_post' post.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-success mb-1">Approve</button>
+          </form>
+
+          <form method="post" action="{% url 'admin_reject_post' post.pk %}" style="display:inline;"
+            onsubmit="return confirm('Reject and delete this post?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-danger mb-1">Delete</button>
+          </form>
+        </td>
+
+        <td>
+          <form method="post" action="{% url 'admin_update_ad_limit' post.created_by.id %}" class="mb-2">
+            {% csrf_token %}
+            <div class="input-group input-group-sm">
+              <input type="number" name="ad_post_limit" value="{{ post.created_by.ad_post_limit }}" min="1"
+                class="form-control">
+              <div class="input-group-append">
+                <button class="btn btn-outline-primary">Update</button>
+              </div>
+            </div>
+          </form>
+
+          <form method="post" action="{% url 'admin_delete_user' post.created_by.id %}"
+            onsubmit="return confirm('Delete user and ALL their posts?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger w-100">
+              Delete User
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">No new posts pending approval.</p>
+  {% endif %}
+
+  <!-- ========================= -->
+  <!-- SPAM / FLAGGED POSTS -->
+  <!-- ========================= -->
+  <h4 class="mt-5 text-danger">Reported as Spam / Fake</h4>
+
+  {% if flagged_posts %}
+  <table class="table table-bordered table-striped">
+    <thead class="thead-dark">
+      <tr>
+        <th>Post</th>
+        <th>User</th>
+        <th>Images</th>
+        <th>Created</th>
+        <th>Post Actions</th>
+        <th>User Management</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for post in flagged_posts %}
+      <tr>
+        <td>
+          <strong>{{ post.title }}</strong><br>
+          <small>{{ post.category }}</small><br>
+          <small>{{ post.postcode }} | {{ post.district }}</small><br>
+          <span class="badge badge-danger">Reported as Spam</span>
+        </td>
+
+        <td>
+          {{ post.created_by.phone_number }}<br>
+          <small>
+            Ads: {{ post.created_by.posts.count }} /
+            {{ post.created_by.ad_post_limit }}
+          </small>
+        </td>
+
+        <td>{{ post.images.count }}</td>
+
+        <td>{{ post.created_at|date:"d M Y" }}</td>
+
+        <td>
+          <a href="{% url 'post_detail' post.pk %}" target="_blank" class="btn btn-sm btn-info mb-1">View</a>
+
+          <form method="post" action="{% url 'admin_approve_post' post.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-success mb-1">Approve</button>
+          </form>
+
+          <form method="post" action="{% url 'admin_reject_post' post.pk %}" style="display:inline;"
+            onsubmit="return confirm('Delete spam post?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-danger mb-1">Delete</button>
+          </form>
+        </td>
+
+        <td>
+          <form method="post" action="{% url 'admin_update_ad_limit' post.created_by.id %}" class="mb-2">
+            {% csrf_token %}
+            <div class="input-group input-group-sm">
+              <input type="number" name="ad_post_limit" value="{{ post.created_by.ad_post_limit }}" min="1"
+                class="form-control">
+              <div class="input-group-append">
+                <button class="btn btn-outline-primary">Update</button>
+              </div>
+            </div>
+          </form>
+
+          <form method="post" action="{% url 'admin_delete_user' post.created_by.id %}"
+            onsubmit="return confirm('Delete user and ALL their posts?');">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline-danger w-100">
+              Delete User
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="text-muted">No spam-reported posts.</p>
+  {% endif %}
+
+</div>
+{% endblock %}

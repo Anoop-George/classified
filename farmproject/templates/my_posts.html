@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3>My Ads</h3>
+
+  {% if posts %}
+  <div class="list-group mt-3">
+    {% for post in posts %}
+    <div class="list-group-item">
+      <h5>{{ post.title }}</h5>
+      <p class="text-muted mb-1">
+        {{ post.get_category_display }} · {{ post.created_at|date:"d M Y" }}
+      </p>
+
+      <span class="badge badge-{% if post.admin_verified %}success{% else %}warning{% endif %}">
+        {% if post.admin_verified %}Verified{% else %}Pending{% endif %}
+      </span>
+
+      <div class="mt-2">
+        <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+        <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <a href="{% url 'post_delete' post.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-muted mt-3">You have not posted any ads yet.</p>
+  {% endif %}
+
+  {% if post.is_expired %}
+  <span class="badge badge-danger">Expired</span>
+
+  {% if post.renew_count < 3 %} <a href="{% url 'renew_post' post.pk %}" class="btn btn-sm btn-warning">
+    Renew ({{ post.renew_left }} left)
+    </a>
+    {% else %}
+    <small class="text-danger">Renewal limit reached</small>
+    {% endif %}
+    {% endif %}
+
+</div>
+
+{% endblock %}
