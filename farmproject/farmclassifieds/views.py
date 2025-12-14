@@ -13,6 +13,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import PhoneSignupForm, PhoneLoginForm, AdPostForm
 from .models import AdPost, User
+from django.db.models import Prefetch
+from .models import AdPost, AdImage
 
 
 # ---------------------------------------------
@@ -22,24 +24,17 @@ def post_list(request):
     posts = (
         AdPost.objects
         .filter(admin_verified=True)
-        .prefetch_related("images")   # ✅ CRITICAL FIX
-        .order_by("-created_at")
+        .prefetch_related(
+            Prefetch(
+                'images',
+                queryset=AdImage.objects.only('image', 'webp_image')
+            )
+        )
+        .order_by('-created_at')
     )
 
-    query = request.GET.get("q", "")
-    if query:
-        posts = posts.filter(
-            Q(title__icontains=query) |
-            Q(contents__icontains=query) |
-            Q(postcode__icontains=query) |
-            Q(district__icontains=query)
-        )
-
-    posts = posts[:15]  # slice AFTER prefetch
-
-    return render(request, "post_list.html", {
-        "posts": posts,
-        "query": query,
+    return render(request, 'post_list.html', {
+        'posts': posts
     })
 
 
