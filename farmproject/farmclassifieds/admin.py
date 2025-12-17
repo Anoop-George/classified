@@ -12,19 +12,29 @@ class UserAdmin(BaseUserAdmin):
         'username',
         'phone_number',
         'ad_post_limit',
+        'is_verified_seller',
         'is_active',
-        'is_staff',
     )
+    list_editable = ('is_verified_seller', 'ad_post_limit')
 
-    list_filter = ('is_active', 'is_staff')
-    search_fields = ('username', 'phone_number')
+    def save_model(self, request, obj, form, change):
+        was_verified = False
 
-    fieldsets = BaseUserAdmin.fieldsets + (
-        ('Ad Settings', {
-            'fields': ('phone_number', 'ad_post_limit'),
-        }),
-    )
+        if change:
+            old = User.objects.get(pk=obj.pk)
+            was_verified = old.is_verified_seller
 
+        super().save_model(request, obj, form, change)
+
+        # ✅ USER JUST GOT VERIFIED → AUTO-APPROVE POSTS
+        if not was_verified and obj.is_verified_seller:
+            AdPost.objects.filter(
+                created_by=obj,
+                admin_verified=False
+            ).update(
+                admin_verified=True,
+                public_flagged=False
+            )
 
 # =========================
 # AD IMAGE INLINE

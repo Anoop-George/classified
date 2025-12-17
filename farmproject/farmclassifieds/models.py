@@ -20,7 +20,8 @@ class User(AbstractUser):
     facebook_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     email = models.EmailField(blank=True, null=True)
     ad_post_limit = models.PositiveIntegerField(default=3)
-
+    is_verified_seller = models.BooleanField(default=False)
+    
     def __str__(self):
         return self.username or self.phone_number
 
@@ -77,6 +78,14 @@ class AdPost(models.Model):
     expires_at = models.DateTimeField()
     renew_count = models.PositiveIntegerField(default=0)
     is_expired = models.BooleanField(default=False)
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Enter price "
+    )
+
 
     def save(self, *args, **kwargs):
         if not self.pk:

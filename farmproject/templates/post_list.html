@@ -4,6 +4,43 @@
 <div class="container mt-4">
 
   <h3 class="mb-4">Latest Farm Listings</h3>
+  <!-- ================= HOME FILTER ================= -->
+  <form method="get" action="{% url 'search_results' %}" class="mb-4">
+    <div class="row">
+
+      <!-- DISTRICT -->
+      <div class="col-md-4 mb-2">
+        <select name="district" class="form-control">
+          <option value="">Select District</option>
+          {% for d in districts %}
+          <option value="{{ d }}">{{ d }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- CATEGORY -->
+      <div class="col-md-4 mb-2">
+        <select name="category" class="form-control">
+          <option value="">Select Category</option>
+          {% for key, label in categories %}
+          <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- POSTCODE -->
+      <div class="col-md-4 mb-2">
+        <input type="text" name="postcode" class="form-control" placeholder="Postcode (optional)">
+      </div>
+
+      <div class="col-md-12 mt-2">
+        <button class="btn btn-success btn-block">
+          Search Listings
+        </button>
+      </div>
+
+    </div>
+  </form>
 
   {% if posts %}
   <div class="row">
@@ -46,6 +83,8 @@
           <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-primary btn-block">
             View Details
           </a>
+          ₹ {{ post.price|floatformat:0 }}
+
         </div>
 
       </div>

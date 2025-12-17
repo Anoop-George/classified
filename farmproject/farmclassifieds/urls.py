@@ -33,4 +33,9 @@ path('moderation/posts/<int:pk>/extend/', views.admin_extend_post, name='admin_e
 path('moderation/users/<int:user_id>/limit/', views.admin_update_ad_limit, name='admin_update_ad_limit'),
 path('moderation/users/<int:user_id>/delete/', views.admin_delete_user, name='admin_delete_user'),
 
+path("browse/", views.select_district, name="select_district"),
+path("browse/<str:district>/", views.select_category, name="select_category"),
+path("browse/<str:district>/<str:category>/", views.posts_by_location, name="posts_by_location"),
+path("search/", views.search_results, name="search_results"),
+
 ]

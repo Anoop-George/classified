@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h4 class="mb-3">
+    Categories in <strong>{{ district }}</strong>
+  </h4>
+
+  <div class="row">
+    {% for c in categories %}
+      <div class="col-6 col-md-4 mb-3">
+        <a href="{% url 'posts_by_location' district c %}"
+           class="btn btn-outline-primary btn-block">
+          {{ c|capfirst }}
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

@@ -20,22 +20,74 @@ from .models import AdPost, AdImage
 # ---------------------------------------------
 # PUBLIC LIST VIEW
 # ---------------------------------------------
+from django.db.models import Prefetch
+from .models import AdPost, AdImage
+
 def post_list(request):
     posts = (
         AdPost.objects
         .filter(admin_verified=True)
         .prefetch_related(
             Prefetch(
-                'images',
-                queryset=AdImage.objects.only('image', 'webp_image')
+                "images",
+                queryset=AdImage.objects.only("image", "webp_image")
             )
         )
-        .order_by('-created_at')
     )
 
-    return render(request, 'post_list.html', {
-        'posts': posts
+    # -----------------------
+    # FILTERS (OPTIONAL)
+    # -----------------------
+    district = request.GET.get("district")
+    category = request.GET.get("category")
+    postcode = request.GET.get("postcode")
+
+    if district:
+        posts = posts.filter(district__iexact=district)
+
+    if category:
+        posts = posts.filter(category=category)
+
+    if postcode:
+        posts = posts.filter(postcode__icontains=postcode)
+
+    # -----------------------
+    # SORTING
+    # -----------------------
+    sort = request.GET.get("sort", "new")
+
+    if sort == "price_low":
+        posts = posts.order_by("price")
+    elif sort == "price_high":
+        posts = posts.order_by("-price")
+    elif sort == "old":
+        posts = posts.order_by("created_at")
+    else:
+        posts = posts.order_by("-created_at")  # default newest
+
+    # -----------------------
+    # FILTER OPTIONS
+    # -----------------------
+    districts = (
+        AdPost.objects
+        .filter(admin_verified=True)
+        .values_list("district", flat=True)
+        .distinct()
+        .order_by("district")
+    )
+
+    categories = AdPost.CATEGORY_CHOICES
+
+    return render(request, "post_list.html", {
+        "posts": posts,
+        "districts": districts,
+        "categories": categories,
+        "selected_district": district,
+        "selected_category": category,
+        "selected_postcode": postcode,
+        "selected_sort": sort,
     })
+
 
 
 # ---------------------------------------------
@@ -93,12 +145,19 @@ def post_detail(request, pk):
         return redirect("post_detail", pk=pk)
 
     url = request.build_absolute_uri()
-
+    whatsapp_text = (
+        f"{post.title}\n"
+        
+        f"Location: {post.district}\n\n"
+        f"View details:\n"
+        f"{request.build_absolute_uri()}"
+    )
     return render(request, "post_detail.html", {
         "post": post,
         "share_facebook": f"https://www.facebook.com/sharer/sharer.php?u={url}",
         "share_whatsapp": f"https://wa.me/?text={url}",
         "share_instagram": url,
+         "whatsapp_text": whatsapp_text
     })
 
 
@@ -122,9 +181,26 @@ def post_create(request):
     if request.method == 'POST':
         form = AdPostForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save(user=user)
-            messages.success(request, "Your ad has been submitted for admin approval.")
-            return redirect('my_posts')
+            post = form.save(commit=False, user=request.user)
+
+    # ✅ AUTO-APPROVAL LOGIC
+        if request.user.is_verified_seller:
+            post.admin_verified = True
+        else:
+            post.admin_verified = False
+
+        post.save()
+        form.save_m2m()
+
+        messages.success(
+            request,
+            "Post published successfully"
+            if post.admin_verified
+            else "Post submitted for admin approval"
+        )
+
+        return redirect("my_posts")
+
     else:
         form = AdPostForm()
 
@@ -296,3 +372,97 @@ def admin_extend_post(request, pk):
 
     messages.success(request, "Ad extended by 2 months.")
     return redirect('admin_verification')
+
+def select_district(request):
+    districts = (
+        AdPost.objects
+        .filter(admin_verified=True)
+        .values_list("district", flat=True)
+        .distinct()
+        .order_by("district")
+    )
+
+    return render(request, "select_district.html", {
+        "districts": districts
+    })
+
+def select_category(request, district):
+    categories = (
+        AdPost.objects
+        .filter(admin_verified=True, district=district)
+        .values_list("category", flat=True)
+        .distinct()
+    )
+
+    return render(request, "select_category.html", {
+        "district": district,
+        "categories": categories
+    })
+
+def posts_by_location(request, district, category):
+    posts = (
+        AdPost.objects
+        .filter(
+            admin_verified=True,
+            district=district,
+            category=category
+        )
+        .prefetch_related(
+            Prefetch(
+                'images',
+                queryset=AdImage.objects.only('image', 'webp_image')
+            )
+        )
+        .order_by('-created_at')
+    )
+
+    return render(request, "post_list.html", {
+        "posts": posts,
+        "district": district,
+        "category": category
+    })
+
+
+from django.core.paginator import Paginator
+from .models import AdPost
+
+
+def search_results(request):
+    posts = AdPost.objects.filter(admin_verified=True)
+
+    # FILTERS
+    district = request.GET.get("district")
+    category = request.GET.get("category")
+    postcode = request.GET.get("postcode")
+
+    if district:
+        posts = posts.filter(district=district)
+
+    if category:
+        posts = posts.filter(category=category)
+
+    if postcode:
+        posts = posts.filter(postcode__icontains=postcode)
+
+    # SORTING
+    sort = request.GET.get("sort", "new")
+
+    if sort == "price_low":
+        posts = posts.order_by("price")
+    elif sort == "price_high":
+        posts = posts.order_by("-price")
+    elif sort == "old":
+        posts = posts.order_by("created_at")
+    else:
+        posts = posts.order_by("-created_at")
+
+    # PAGINATION
+    paginator = Paginator(posts, 10)  # 10 per page
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "search_results.html", {
+        "page_obj": page_obj,
+        "sort": sort,
+        "request": request,
+    })

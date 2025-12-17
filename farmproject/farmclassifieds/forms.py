@@ -62,7 +62,7 @@ class AdPostForm(forms.ModelForm):
     class Meta:
         model = AdPost
         fields = [
-            'title', 'contents', 'category',
+            'title', 'price','contents', 'category',
             'phone_number', 'postcode', 'district'
         ]
 
@@ -74,6 +74,8 @@ class AdPostForm(forms.ModelForm):
 
         return files
 
+    
+    
     def save(self, commit=True, user=None):
         post = super().save(commit=False)
 
@@ -87,5 +89,7 @@ class AdPostForm(forms.ModelForm):
 
             for img in images:
                 AdImage.objects.create(post=post, image=img)
+    
+    
 
         return post
