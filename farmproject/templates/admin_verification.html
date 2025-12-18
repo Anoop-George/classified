@@ -173,6 +173,33 @@
   {% else %}
   <p class="text-muted">No spam-reported posts.</p>
   {% endif %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">🔍 Find Post by ID</h5>
+
+      <form method="get" action="/admin/farmclassifieds/adpost/" onsubmit="return goToPostAdmin();" class="form-inline">
+
+        <input type="number" id="post_id_input" class="form-control mr-2" placeholder="Enter Post Number" required>
+
+        <button type="submit" class="btn btn-primary">
+          Open Post
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function goToPostAdmin() {
+      const id = document.getElementById("post_id_input").value;
+      if (!id) return false;
+
+      // Redirect to Django admin edit page
+      window.location.href =
+        "/admin/farmclassifieds/adpost/" + id + "/change/";
+
+      return false;
+    }
+  </script>
 
 </div>
 {% endblock %}

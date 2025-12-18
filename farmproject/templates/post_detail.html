@@ -94,7 +94,9 @@
           {{ post.created_by.phone_number|default:"Anonymous" }}
         </strong>
       </p>
-
+      <span class="badge badge-light">
+        👁️ {{ post.view_count }} views
+      </span>
 
       <div class="mb-3">
         <h4 class="text-success">
@@ -148,6 +150,17 @@
   <a href="{% url 'post_list' %}" class="btn btn-secondary">
     Back to Posts
   </a>
+  <div class="alert alert-warning mt-3">
+    <strong>⚠️ Buyer Warning</strong><br>
+    Some sellers may use stock or internet images.
+    <br>
+    <strong>Always call the seller</strong> and ask for:
+    <ul class="mb-0">
+      <li>Live video on WhatsApp</li>
+      <li>Current photos taken today</li>
+      <li>Location confirmation</li>
+    </ul>
+  </div>
 
 </div>
 

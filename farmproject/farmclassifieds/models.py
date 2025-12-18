@@ -34,6 +34,11 @@ class User(AbstractUser):
 # ------------------------------
 #  AD POST
 # ------------------------------
+# models.py (ONLY AdPost part)
+
+from datetime import timedelta
+from django.utils import timezone
+
 class AdPost(models.Model):
     CATEGORY_CHOICES = [
         ('fish', 'Fish'),
@@ -59,8 +64,6 @@ class AdPost(models.Model):
     modified_at = models.DateTimeField(auto_now=True)
 
     phone_number = models.CharField(max_length=20)
-
-    # FIX : added related_name="posts" + null=True, blank=True 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -72,35 +75,28 @@ class AdPost(models.Model):
     postcode = models.CharField(max_length=20)
     district = models.CharField(max_length=100)
 
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
     view_count = models.PositiveIntegerField(default=0)
     admin_verified = models.BooleanField(default=False)
     public_flagged = models.BooleanField(default=False)
+
     expires_at = models.DateTimeField()
     renew_count = models.PositiveIntegerField(default=0)
     is_expired = models.BooleanField(default=False)
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Enter price "
-    )
-
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-        # First time creation → 2 months expiry
+        # Set expiry ONLY on first creation
+        if not self.pk and not self.expires_at:
             self.expires_at = timezone.now() + timedelta(days=60)
 
-    # Auto-expire
-        if timezone.now() > self.expires_at:
-         self.is_expired = True
+        # Keep is_expired in sync
+        self.is_expired = timezone.now() > self.expires_at
 
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
-    # ❌ DO NOT add number_of_adposts here — removed
 
 
 # ------------------------------

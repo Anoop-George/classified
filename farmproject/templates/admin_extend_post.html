@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3>Extend Ad</h3>
+
+  <p><strong>Ad ID:</strong> {{ post.pk }}</p>
+  <p><strong>Title:</strong> {{ post.title }}</p>
+  <p><strong>Current Expiry:</strong> {{ post.expires_at|date:"d M Y" }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+      <label>Extend by (months)</label>
+      <input type="number" name="months" value="2" min="1" class="form-control" required>
+    </div>
+    <button class="btn btn-success">Extend Ad</button>
+    <a href="{% url 'admin_verification' %}" class="btn btn-secondary">Cancel</a>
+  </form>
+</div>
+
+{% endblock %}

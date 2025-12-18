@@ -1,5 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils import timezone
+
 from .models import User, AdPost, AdImage
 
 
@@ -9,13 +11,27 @@ from .models import User, AdPost, AdImage
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = (
-        'username',
-        'phone_number',
-        'ad_post_limit',
-        'is_verified_seller',
-        'is_active',
+        "id",
+        "username",
+        "phone_number",
+        "ad_post_limit",
+        "is_verified_seller",
+        "is_active",
+        "is_staff",
     )
-    list_editable = ('is_verified_seller', 'ad_post_limit')
+
+    list_editable = (
+        "ad_post_limit",
+        "is_verified_seller",
+    )
+
+    search_fields = (
+        "id",
+        "username",
+        "phone_number",
+    )
+
+    ordering = ("-date_joined",)
 
     def save_model(self, request, obj, form, change):
         was_verified = False
@@ -26,7 +42,7 @@ class UserAdmin(BaseUserAdmin):
 
         super().save_model(request, obj, form, change)
 
-        # ✅ USER JUST GOT VERIFIED → AUTO-APPROVE POSTS
+        # ✅ USER JUST GOT VERIFIED → AUTO-APPROVE THEIR PENDING POSTS
         if not was_verified and obj.is_verified_seller:
             AdPost.objects.filter(
                 created_by=obj,
@@ -36,49 +52,78 @@ class UserAdmin(BaseUserAdmin):
                 public_flagged=False
             )
 
+
 # =========================
-# AD IMAGE INLINE
+# AD IMAGE INLINE (POST PAGE)
 # =========================
 class AdImageInline(admin.TabularInline):
     model = AdImage
     extra = 0
-    readonly_fields = ('image', 'webp_image')
+    readonly_fields = ("image", "webp_image")
 
 
 # =========================
-# AD POST ADMIN (SINGLE!)
+# AD POST ADMIN
 # =========================
 @admin.register(AdPost)
 class AdPostAdmin(admin.ModelAdmin):
     list_display = (
-        'title',
-        'created_by',
-        'category',
-        'district',
-        'admin_verified',
-        'created_at',
+        "id",
+        "title",
+        "created_by",
+        "phone_number",
+        "category",
+        "district",
+        "postcode",
+        "admin_verified",
+        "public_flagged",
+        "expires_at",
+        "view_count",
+        "created_at",
     )
 
     list_filter = (
-        'admin_verified',
-        'category',
-        'district',
+        "admin_verified",
+        "public_flagged",
+        "category",
+        "district",
+        "expires_at",
     )
 
     search_fields = (
-        'title',
-        'created_by__phone_number',
+        "id",                      # 🔥 Search by Ad ID
+        "title",
+        "phone_number",
+        "postcode",
+        "district",
+        "created_by__phone_number",
+        "created_by__username",
     )
 
-    list_editable = ('admin_verified',)
-    ordering = ('-created_at',)
+    list_editable = ("admin_verified",)
+
+    ordering = ("-created_at",)
+
+    readonly_fields = (
+        "view_count",
+        "created_at",
+        "modified_at",
+    )
+
+    autocomplete_fields = ("created_by",)
 
     inlines = [AdImageInline]
 
+    # Optional: highlight expired ads
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("created_by")
+
 
 # =========================
-# AD IMAGE ADMIN
+# AD IMAGE ADMIN (STANDALONE)
 # =========================
 @admin.register(AdImage)
 class AdImageAdmin(admin.ModelAdmin):
-    list_display = ('post', 'image')
+    list_display = ("id", "post", "image")
+    autocomplete_fields = ("post",)

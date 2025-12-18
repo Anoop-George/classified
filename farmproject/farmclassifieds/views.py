@@ -118,20 +118,34 @@ def filtered_view(request):
 # ---------------------------------------------
 # POST DETAIL VIEW  ✅ FIXED (NO redirect loop)
 # ---------------------------------------------
+from django.db.models import F
+from django.http import HttpResponseNotFound
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+
 def post_detail(request, pk):
     post = get_object_or_404(AdPost, pk=pk)
 
-    # Public cannot see unverified posts
+    # ❌ Public users cannot see unverified posts
     if not post.admin_verified and not request.user.is_staff:
         return HttpResponseNotFound("This post is not available.")
 
-    # ✅ Increment view count ONLY on GET + only when verified
-    if request.method == "GET" and post.admin_verified:
-        AdPost.objects.filter(pk=pk).update(view_count=F("view_count") + 1)
-        # refresh so template shows updated number (optional)
-        post.refresh_from_db(fields=["view_count"])
+    # ----------------------------------
+    # ✅ SAFE VIEW COUNT (session-based)
+    # ----------------------------------
+    session_key = f"viewed_post_{post.pk}"
 
-    # ✅ Handle spam report ONLY on POST
+    if request.method == "GET" and post.admin_verified:
+        if not request.session.get(session_key):
+            AdPost.objects.filter(pk=post.pk).update(
+                view_count=F("view_count") + 1
+            )
+            request.session[session_key] = True
+            post.refresh_from_db(fields=["view_count"])
+
+    # ----------------------------------
+    # 🚩 REPORT SPAM (POST only)
+    # ----------------------------------
     if request.method == "POST" and "report_spam" in request.POST:
         if not post.public_flagged:
             post.public_flagged = True
@@ -141,23 +155,24 @@ def post_detail(request, pk):
             request,
             "Thank you. This post has been reported and will be reviewed by an administrator."
         )
-        # ✅ redirect ONLY after POST (prevents repeat form resubmit)
         return redirect("post_detail", pk=pk)
 
+    # ----------------------------------
+    # 🔗 SHARE LINKS
+    # ----------------------------------
     url = request.build_absolute_uri()
+
     whatsapp_text = (
         f"{post.title}\n"
-        
         f"Location: {post.district}\n\n"
-        f"View details:\n"
-        f"{request.build_absolute_uri()}"
+        f"View details:\n{url}"
     )
+
     return render(request, "post_detail.html", {
         "post": post,
         "share_facebook": f"https://www.facebook.com/sharer/sharer.php?u={url}",
-        "share_whatsapp": f"https://wa.me/?text={url}",
+        "share_whatsapp": f"https://wa.me/?text={whatsapp_text}",
         "share_instagram": url,
-         "whatsapp_text": whatsapp_text
     })
 
 
@@ -237,12 +252,14 @@ class PhoneLoginView(LoginView):
 # ---------------------------------------------
 @login_required
 def my_posts(request):
-    posts = AdPost.objects.filter(created_by=request.user).order_by('-created_at')
+    posts = AdPost.objects.filter(created_by=request.user).order_by("-created_at")
 
-    for p in posts:
-        p.renew_left = max(0, 3 - p.renew_count)
+    for post in posts:
+        post.renew_left = max(0, 3 - post.renew_count)
 
-    return render(request, 'my_posts.html', {'posts': posts})
+    return render(request, "my_posts.html", {
+        "posts": posts
+    })
 
 
 # ------------------------------
@@ -331,21 +348,24 @@ def admin_delete_user(request, user_id):
 # ---------------------------------------------
 # RENEW POST
 # ---------------------------------------------
+# views.py
+
 @login_required
 def renew_post(request, pk):
     post = get_object_or_404(AdPost, pk=pk, created_by=request.user)
 
     if post.renew_count >= 3:
-        messages.error(request, "Renewal limit reached. Please contact administrator.")
-        return redirect('my_posts')
+        messages.error(request, "Renewal limit reached. Contact admin.")
+        return redirect("my_posts")
 
     post.expires_at += timedelta(days=60)
     post.renew_count += 1
     post.is_expired = False
+
     post.save(update_fields=["expires_at", "renew_count", "is_expired"])
 
     messages.success(request, "Your ad has been renewed for 2 more months.")
-    return redirect('my_posts')
+    return redirect("my_posts")
 
 
 @staff_member_required
@@ -362,29 +382,34 @@ def admin_update_ad_limit(request, user_id):
     return redirect('admin_verification')
 
 
+
 @staff_member_required
 def admin_extend_post(request, pk):
     post = get_object_or_404(AdPost, pk=pk)
 
-    post.expires_at += timedelta(days=60)
-    post.is_expired = False
-    post.save(update_fields=["expires_at", "is_expired"])
+    if request.method == "POST":
+        months = request.POST.get("months", "2")
 
-    messages.success(request, "Ad extended by 2 months.")
-    return redirect('admin_verification')
+        try:
+            months = int(months)
+        except ValueError:
+            months = 2
 
-def select_district(request):
-    districts = (
-        AdPost.objects
-        .filter(admin_verified=True)
-        .values_list("district", flat=True)
-        .distinct()
-        .order_by("district")
-    )
+        post.expires_at += timedelta(days=30 * months)
+        post.is_expired = False
+        post.save(update_fields=["expires_at", "is_expired"])
 
-    return render(request, "select_district.html", {
-        "districts": districts
-    })
+        messages.success(
+            request,
+            f"Ad #{post.pk} extended by {months} month(s)."
+        )
+        return redirect("admin_verification")
+
+    return render(request, "admin_extend_post.html", {"post": post})
+
+
+
+
 
 def select_category(request, district):
     categories = (
