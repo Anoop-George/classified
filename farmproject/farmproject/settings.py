@@ -128,3 +128,13 @@ STATIC_URL = '/static/'
 # For simplicity in dev:
 from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "no-reply@farmclassifieds.in"
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 4},
+    },
+]

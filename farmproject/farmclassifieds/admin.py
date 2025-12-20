@@ -3,6 +3,9 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils import timezone
 
 from .models import User, AdPost, AdImage
+from django.contrib.auth.admin import UserAdmin
+from django.urls import reverse
+from django.utils.html import format_html
 
 
 # =========================
@@ -80,6 +83,8 @@ class AdPostAdmin(admin.ModelAdmin):
         "expires_at",
         "view_count",
         "created_at",
+         "expires_at",
+        "is_currently_expired",
     )
 
     list_filter = (
@@ -118,6 +123,10 @@ class AdPostAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related("created_by")
+    def is_currently_expired(self, obj):
+        return obj.expires_at <= timezone.now()
+    is_currently_expired.boolean = True
+    is_currently_expired.short_description = "Expired?"
 
 
 # =========================
@@ -127,3 +136,5 @@ class AdPostAdmin(admin.ModelAdmin):
 class AdImageAdmin(admin.ModelAdmin):
     list_display = ("id", "post", "image")
     autocomplete_fields = ("post",)
+
+

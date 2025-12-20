@@ -1,6 +1,7 @@
 # farmclassifieds/views.py
 
 from datetime import timedelta
+from django.utils import timezone  # add this import
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -26,7 +27,7 @@ from .models import AdPost, AdImage
 def post_list(request):
     posts = (
         AdPost.objects
-        .filter(admin_verified=True)
+        .filter(admin_verified=True, expires_at__gt=timezone.now())
         .prefetch_related(
             Prefetch(
                 "images",
@@ -94,7 +95,8 @@ def post_list(request):
 # FILTERED VIEW
 # ---------------------------------------------
 def filtered_view(request):
-    posts = AdPost.objects.filter(admin_verified=True).order_by('-created_at')
+    posts = AdPost.objects.filter(admin_verified=True,expires_at__gt=timezone.now(),
+).order_by('-created_at')
 
     postcode = request.GET.get('postcode', '')
     category = request.GET.get('category', '')
@@ -129,7 +131,8 @@ def post_detail(request, pk):
     # ❌ Public users cannot see unverified posts
     if not post.admin_verified and not request.user.is_staff:
         return HttpResponseNotFound("This post is not available.")
-
+    if post.expires_at <= timezone.now() and not request.user.is_staff:
+        return HttpResponseNotFound("This post has expired.")
     # ----------------------------------
     # ✅ SAFE VIEW COUNT (session-based)
     # ----------------------------------
@@ -414,7 +417,7 @@ def admin_extend_post(request, pk):
 def select_category(request, district):
     categories = (
         AdPost.objects
-        .filter(admin_verified=True, district=district)
+        .filter(admin_verified=True, district=district, expires_at__gt=timezone.now(),)
         .values_list("category", flat=True)
         .distinct()
     )
@@ -430,7 +433,9 @@ def posts_by_location(request, district, category):
         .filter(
             admin_verified=True,
             district=district,
-            category=category
+            category=category,
+                        expires_at__gt=timezone.now(),
+
         )
         .prefetch_related(
             Prefetch(
@@ -453,7 +458,7 @@ from .models import AdPost
 
 
 def search_results(request):
-    posts = AdPost.objects.filter(admin_verified=True)
+    posts = AdPost.objects.filter(admin_verified=True, expires_at__gt=timezone.now())
 
     # FILTERS
     district = request.GET.get("district")
