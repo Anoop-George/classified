@@ -4,33 +4,45 @@
 <div class="container mt-4">
 
   <h3 class="mb-4">Latest Farm Listings</h3>
-  <!-- ================= HOME FILTER ================= -->
-  <form method="get" action="{% url 'search_results' %}" class="mb-4">
+
+  <!-- ================= FILTER FORM ================= -->
+  <form method="get" action="" class="mb-4">
     <div class="row">
 
       <!-- DISTRICT -->
-      <div class="col-md-4 mb-2">
-        <select name="district" class="form-control">
-          <option value="">Select District</option>
-          {% for d in districts %}
-          <option value="{{ d }}">{{ d }}</option>
-          {% endfor %}
-        </select>
-      </div>
+    <!-- DISTRICT -->
+<div class="col-md-4 mb-2">
+  <select name="district" class="form-control">
+    <option value="">All Districts</option>
+    {% for value, label in districts %}
+      <option value="{{ value }}" {% if value == selected_district %}selected{% endif %}>
+        {{ label }}
+      </option>
+    {% endfor %}
+  </select>
+</div>
 
       <!-- CATEGORY -->
       <div class="col-md-4 mb-2">
         <select name="category" class="form-control">
-          <option value="">Select Category</option>
+          <option value="">All Categories</option>
           {% for key, label in categories %}
-          <option value="{{ key }}">{{ label }}</option>
+            <option value="{{ key }}" {% if key == selected_category %}selected{% endif %}>
+              {{ label }}
+            </option>
           {% endfor %}
         </select>
       </div>
 
       <!-- POSTCODE -->
       <div class="col-md-4 mb-2">
-        <input type="text" name="postcode" class="form-control" placeholder="Postcode (optional)">
+        <input
+          type="text"
+          name="postcode"
+          class="form-control"
+          placeholder="Postcode"
+          value="{{ selected_postcode|default:'' }}"
+        >
       </div>
 
       <div class="col-md-12 mt-2">
@@ -42,6 +54,7 @@
     </div>
   </form>
 
+  <!-- ================= LISTINGS ================= -->
   {% if posts %}
   <div class="row">
 
@@ -49,25 +62,30 @@
     <div class="col-md-4 mb-4">
       <div class="card h-100 shadow-sm">
 
-        {# ---------- IMAGE ---------- #}
+        <!-- IMAGE -->
         {% with img=post.images.all.0 %}
-        {% if img %}
-        <picture>
-          {% if img.webp_image %}
-          <source srcset="{{ img.webp_image.url }}" type="image/webp">
+          {% if img %}
+            <picture>
+              {% if img.webp_image %}
+                <source srcset="{{ img.webp_image.url }}" type="image/webp">
+              {% endif %}
+              <img src="{{ img.image.url }}"
+                   class="card-img-top"
+                   style="height:200px; object-fit:cover;">
+            </picture>
+          {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center"
+                 style="height:200px;">
+              <span class="text-muted">No Image</span>
+            </div>
           {% endif %}
-          <img src="{{ img.image.url }}" class="card-img-top" style="height:200px; object-fit:cover;">
-        </picture>
-        {% else %}
-        <div class="bg-light d-flex align-items-center justify-content-center" style="height:200px;">
-          <span class="text-muted">No Image</span>
-        </div>
-        {% endif %}
         {% endwith %}
 
-        {# ---------- CONTENT ---------- #}
+        <!-- CONTENT -->
         <div class="card-body">
-          <h5 class="card-title">{{ post.title|truncatechars:40 }}</h5>
+          <h5 class="card-title">
+            {{ post.title|truncatechars:40 }}
+          </h5>
 
           <p class="text-muted mb-1">
             {{ post.get_category_display }} • {{ post.district }}
@@ -78,13 +96,13 @@
           </p>
         </div>
 
-        {# ---------- FOOTER ---------- #}
+        <!-- FOOTER -->
         <div class="card-footer bg-white">
-          <a href="{% url 'post_detail' post.pk %}" class="btn btn-sm btn-primary btn-block">
+          <strong>₹ {{ post.price|floatformat:0 }}</strong>
+          <a href="{% url 'post_detail' post.pk %}"
+             class="btn btn-sm btn-primary btn-block mt-2">
             View Details
           </a>
-          ₹ {{ post.price|floatformat:0 }}
-
         </div>
 
       </div>
@@ -93,7 +111,51 @@
 
   </div>
   {% else %}
-  <p class="text-muted">No posts available.</p>
+    <p class="text-muted">No posts available.</p>
+  {% endif %}
+
+  <!-- ================= PAGINATION ================= -->
+  {% if page_obj.paginator.num_pages > 1 %}
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center">
+
+      <!-- PREVIOUS -->
+      {% if page_obj.has_previous %}
+      <li class="page-item">
+        <a class="page-link"
+           href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">
+          Previous
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">Previous</span>
+      </li>
+      {% endif %}
+
+      <!-- PAGE INFO -->
+      <li class="page-item disabled">
+        <span class="page-link">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+
+      <!-- NEXT -->
+      {% if page_obj.has_next %}
+      <li class="page-item">
+        <a class="page-link"
+           href="?{% for k,v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">
+          Next
+        </a>
+      </li>
+      {% else %}
+      <li class="page-item disabled">
+        <span class="page-link">Next</span>
+      </li>
+      {% endif %}
+
+    </ul>
+  </nav>
   {% endif %}
 
 </div>

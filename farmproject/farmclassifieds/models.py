@@ -40,20 +40,38 @@ from datetime import timedelta
 from django.utils import timezone
 
 class AdPost(models.Model):
+
     CATEGORY_CHOICES = [
-        ('fish', 'Fish'),
-        ('chicken', 'Chicken'),
-        ('duck', 'Duck'),
-        ('other_birds', 'Other Birds'),
-        ('cow', 'Cow'),
-        ('goat', 'Goat'),
-        ('buffalo', 'Buffalo'),
-        ('agri_produce', 'Agri Produce'),
-        ('seeds', 'Seeds'),
-        ('dogs', 'Dogs'),
-        ('cats', 'Cats'),
-        ('equipment', 'Equipment'),
-        ('other', 'Other'),
+        ('fish', 'മത്സ്യം'),
+        ('chicken', 'കോഴി'),
+        ('duck', 'താറാവ്'),
+        ('other_birds', 'മറ്റ് പക്ഷികൾ'),
+        ('cow', 'പശു'),
+        ('goat', 'ആട്'),
+        ('buffalo', 'എരുമ'),
+        ('agri_produce', 'കൃഷി ഉൽപ്പന്നങ്ങൾ'),
+        ('seeds', 'വിത്തുകൾ'),
+        ('dogs', 'നായ'),
+        ('cats', 'പൂച്ച'),
+        ('equipment', 'കൃഷി ഉപകരണങ്ങൾ'),
+        ('other', 'മറ്റ്'),
+    ]
+
+    DISTRICT_CHOICES = [
+        ('alappuzha', 'ആലപ്പുഴ'),
+        ('ernakulam', 'എറണാകുളം'),
+        ('idukki', 'ഇടുക്കി'),
+        ('kannur', 'കണ്ണൂർ'),
+        ('kasaragod', 'കാസർഗോഡ്'),
+        ('kollam', 'കൊല്ലം'),
+        ('kottayam', 'കോട്ടയം'),
+        ('kozhikode', 'കോഴിക്കോട്'),
+        ('malappuram', 'മലപ്പുറം'),
+        ('palakkad', 'പാലക്കാട്'),
+        ('pathanamthitta', 'പത്തനംതിട്ട'),
+        ('thiruvananthapuram', 'തിരുവനന്തപുരം'),
+        ('thrissur', 'തൃശൂർ'),
+        ('wayanad', 'വയനാട്'),
     ]
 
     title = models.CharField(max_length=200)
@@ -73,8 +91,10 @@ class AdPost(models.Model):
     )
 
     postcode = models.CharField(max_length=20)
-    district = models.CharField(max_length=100)
-
+    district = models.CharField(
+        max_length=30,
+        choices=DISTRICT_CHOICES
+    )
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     view_count = models.PositiveIntegerField(default=0)
@@ -110,8 +130,18 @@ def get_webp_upload_path(instance, filename):
     return os.path.join('ad_images', 'webp', filename)
 
 # ------------------------------
-#  AD IMAGE (with hard limit: max 6 images per post)
+#  AD IMAGE (with hard limit: max 3 images per post)
 # ------------------------------
+# ------------------------------
+#  AD IMAGE (with compression + WebP)
+# ------------------------------
+def get_image_upload_path(instance, filename):
+    return os.path.join('ad_images', filename)
+
+
+def get_webp_upload_path(instance, filename):
+    return os.path.join('ad_images', 'webp', filename)
+
 
 class AdImage(models.Model):
     post = models.ForeignKey(
@@ -120,7 +150,12 @@ class AdImage(models.Model):
         related_name='images'
     )
 
-    image = models.ImageField(upload_to=get_image_upload_path)
+    # This field will hold EITHER:
+    # - the single JPEG "cover" image for the post (for the first AdImage)
+    # - or be left empty for other images (WebP only)
+    image = models.ImageField(upload_to=get_image_upload_path, blank=True)
+
+    # WebP variant for every image
     webp_image = models.ImageField(
         upload_to=get_webp_upload_path,
         blank=True,
@@ -131,33 +166,60 @@ class AdImage(models.Model):
         return f"Image for post {self.post_id}"
 
     def save(self, *args, **kwargs):
-        # Enforce MAX 6 images per post at model-level
-        if self.post.images.count() >= 6:
-            raise ValueError("A post cannot have more than 6 images.")
+        """
+        Rules:
+        - Max 3 AdImage per AdPost
+        - Every AdImage gets a WebP file (webp_image)
+        - Only ONE JPEG is stored per AdPost (the first AdImage created)
+        """
+
+        creating = self.pk is None
+
+        # --- Enforce MAX 3 images per post at model-level ---
+        if self.post and creating and self.post.images.count() >= 3:
+            raise ValueError("A post cannot have more than 3 images.")
 
         raw = kwargs.pop('raw', False)
 
         if self.image and not raw:
+            # Open original upload
             img = Image.open(self.image)
             img = img.convert('RGB')
 
-            # -------- Compressed JPEG ----------
-            jpg_io = BytesIO()
-            img.save(jpg_io, format='JPEG', quality=75, optimize=True)
-            jpg_io.seek(0)
+            # --- Resize big images to reduce CPU + file size ---
+            MAX_DIMENSION = 1600  # adjust if you want smaller/larger
+            if max(img.size) > MAX_DIMENSION:
+                img.thumbnail((MAX_DIMENSION, MAX_DIMENSION))
 
             base_name, _ext = os.path.splitext(self.image.name)
-            jpg_name = base_name + ".jpg"
-            self.image.save(jpg_name, ContentFile(jpg_io.getvalue()), save=False)
 
-            # -------- WebP variant -------------
-            try:
-                webp_io = BytesIO()
-                img.save(webp_io, format='WEBP', quality=70, method=6)
-                webp_io.seek(0)
-                webp_name = base_name + ".webp"
-                self.webp_image.save(webp_name, ContentFile(webp_io.getvalue()), save=False)
-            except OSError:
-                pass
+            # --- 1) Create WebP for EVERY AdImage ---
+            webp_io = BytesIO()
+            img.save(webp_io, format='WEBP', quality=70, method=6)
+            webp_io.seek(0)
+            webp_name = base_name + ".webp"
+            self.webp_image.save(webp_name, ContentFile(webp_io.getvalue()), save=False)
+
+            # --- 2) Create JPEG ONLY if this post doesn't have one yet ---
+            from .models import AdImage as AdImageModel  # avoid circular import issues
+
+            has_jpeg = AdImageModel.objects.filter(
+                post=self.post
+            ).exclude(pk=self.pk).exclude(image="").exists()
+
+            if not has_jpeg:
+                # This will be the single JPEG "cover" image for the post
+                jpg_io = BytesIO()
+                img.save(jpg_io, format='JPEG', quality=75, optimize=True)
+                jpg_io.seek(0)
+                jpg_name = base_name + ".jpg"
+                self.image.save(jpg_name, ContentFile(jpg_io.getvalue()), save=False)
+            else:
+                # For non-cover images, we don't keep a JPEG file.
+                # Clear the field so it doesn't point anywhere.
+                if self.image and self.image.name:
+                    # Delete the temporary uploaded file from storage, but don't save model yet
+                    self.image.delete(save=False)
+                self.image = ""
 
         super().save(*args, **kwargs)

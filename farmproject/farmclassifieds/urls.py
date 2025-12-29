@@ -36,5 +36,6 @@ path('moderation/users/<int:user_id>/delete/', views.admin_delete_user, name='ad
 path("browse/<str:district>/", views.select_category, name="select_category"),
 path("browse/<str:district>/<str:category>/", views.posts_by_location, name="posts_by_location"),
 path("search/", views.search_results, name="search_results"),
+path('moderation/users/search/', views.admin_user_search, name='admin_user_search'),
 
 ]

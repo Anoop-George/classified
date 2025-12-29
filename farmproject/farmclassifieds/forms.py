@@ -69,8 +69,8 @@ class AdPostForm(forms.ModelForm):
     def clean_images(self):
         files = self.files.getlist('images') if hasattr(self.files, "getlist") else []
             
-        if len(files) > 6:
-            raise forms.ValidationError("You can upload up to 6 images.")
+        if len(files) > 3:
+            raise forms.ValidationError("You can upload up to 3 images.")
 
         return files
 
@@ -93,3 +93,7 @@ class AdPostForm(forms.ModelForm):
     
 
         return post
+    
+
+
+

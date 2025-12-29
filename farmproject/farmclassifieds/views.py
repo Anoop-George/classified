@@ -24,10 +24,33 @@ from .models import AdPost, AdImage
 from django.db.models import Prefetch
 from .models import AdPost, AdImage
 
+# postlist  view
+
+from django.core.paginator import Paginator
+from django.utils import timezone
+from django.db.models import Prefetch
+from .models import AdPost, AdImage
+
+
 def post_list(request):
-    posts = (
+    # -----------------------
+    # BASE QUERYSET (lean)
+    # -----------------------
+    qs = (
         AdPost.objects
-        .filter(admin_verified=True, expires_at__gt=timezone.now())
+        .filter(
+            admin_verified=True,
+            expires_at__gt=timezone.now()
+        )
+        .only(
+            "id",
+            "title",
+            "contents",
+            "price",
+            "district",
+            "category",
+            "created_at"
+        )
         .prefetch_related(
             Prefetch(
                 "images",
@@ -37,59 +60,53 @@ def post_list(request):
     )
 
     # -----------------------
-    # FILTERS (OPTIONAL)
+    # FILTERS
     # -----------------------
-    district = request.GET.get("district")
-    category = request.GET.get("category")
-    postcode = request.GET.get("postcode")
+    district = request.GET.get("district") or None
+    category = request.GET.get("category") or None
+    postcode = request.GET.get("postcode") or None
 
     if district:
-        posts = posts.filter(district__iexact=district)
+        qs = qs.filter(district=district)
 
     if category:
-        posts = posts.filter(category=category)
+        qs = qs.filter(category=category)
 
     if postcode:
-        posts = posts.filter(postcode__icontains=postcode)
+        qs = qs.filter(postcode__icontains=postcode)
 
     # -----------------------
     # SORTING
     # -----------------------
-    sort = request.GET.get("sort", "new")
+   
 
-    if sort == "price_low":
-        posts = posts.order_by("price")
-    elif sort == "price_high":
-        posts = posts.order_by("-price")
-    elif sort == "old":
-        posts = posts.order_by("created_at")
-    else:
-        posts = posts.order_by("-created_at")  # default newest
+    
+    qs = qs.order_by("-created_at")
 
     # -----------------------
-    # FILTER OPTIONS
+    # PAGINATION
     # -----------------------
-    districts = (
-        AdPost.objects
-        .filter(admin_verified=True)
-        .values_list("district", flat=True)
-        .distinct()
-        .order_by("district")
-    )
+    paginator = Paginator(qs, 6)  # 6 cards = perfect for mobile
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
-    categories = AdPost.CATEGORY_CHOICES
-
+    # -----------------------
+    # RENDER
+    # -----------------------
     return render(request, "post_list.html", {
-        "posts": posts,
-        "districts": districts,
-        "categories": categories,
+        "posts": page_obj,
+        "page_obj": page_obj,
+
+        # STATIC choices (NO DB HIT)
+        "districts": AdPost.DISTRICT_CHOICES,
+        "categories": AdPost.CATEGORY_CHOICES,
+
+        # UI state
         "selected_district": district,
         "selected_category": category,
         "selected_postcode": postcode,
-        "selected_sort": sort,
+       
     })
-
-
 
 # ---------------------------------------------
 # FILTERED VIEW
@@ -495,4 +512,28 @@ def search_results(request):
         "page_obj": page_obj,
         "sort": sort,
         "request": request,
+    })
+
+
+@staff_member_required
+def admin_user_search(request):
+    query = request.GET.get("q", "").strip()
+    users = User.objects.none()
+
+    if query:
+        filters = Q(username__icontains=query) | Q(phone_number__icontains=query)
+
+        # If query looks like an integer, also try matching the ID exactly
+        if query.isdigit():
+            filters |= Q(id=int(query))
+
+        users = (
+            User.objects
+            .filter(filters)
+            .order_by("-date_joined")
+        )
+
+    return render(request, "admin_user_search.html", {
+        "query": query,
+        "users": users,
     })

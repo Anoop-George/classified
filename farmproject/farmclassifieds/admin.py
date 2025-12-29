@@ -127,7 +127,28 @@ class AdPostAdmin(admin.ModelAdmin):
         return obj.expires_at <= timezone.now()
     is_currently_expired.boolean = True
     is_currently_expired.short_description = "Expired?"
+        # 🟢 Allow all staff users to access AdPost in admin
+    def has_module_permission(self, request):
+        return request.user.is_staff
 
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    # (optional) allow staff to delete posts
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_staff
+        def get_readonly_fields(self, request, obj=None):
+            if not request.user.is_superuser:
+                return (
+                    "created_by",
+                    "created_at",
+                    "view_count",
+                    "expires_at",
+            )
+        return super().get_readonly_fields(request, obj)
 
 # =========================
 # AD IMAGE ADMIN (STANDALONE)
